@@ -104,6 +104,7 @@ private:
 	/// @arg _json json string to be written
 	void createJson(std::string const& _fileName, std::string const& _json);
 
+	bool checkMutuallyExclusive(std::string const& _optionA, std::string const& _optionB) const;
 	size_t countEnabledOptions(std::vector<std::string> const& _optionNames) const;
 	static std::string joinOptionNames(std::vector<std::string> const& _optionNames, std::string _separator = ", ");
 
@@ -127,6 +128,7 @@ private:
 	std::map<std::string, util::h160> m_libraries;
 	/// Solidity compiler stack
 	std::unique_ptr<frontend::CompilerStack> m_compiler;
+	CompilerStack::State m_stopAfter = CompilerStack::State::CompilationSuccessful;
 	/// EVM version to use
 	langutil::EVMVersion m_evmVersion;
 	/// How to handle revert strings

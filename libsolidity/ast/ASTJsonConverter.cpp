@@ -735,6 +735,7 @@ bool ASTJsonConverter::visit(FunctionCall const& _node)
 	}
 	else
 		attributes.emplace_back("kind", functionCallKind(nodeKind));
+
 	appendExpressionAttributes(attributes, _node.annotation());
 	setJsonNode(_node, "FunctionCall", std::move(attributes));
 	return false;
