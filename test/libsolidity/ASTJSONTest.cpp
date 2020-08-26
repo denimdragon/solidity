@@ -131,9 +131,8 @@ TestCase::TestResult ASTJSONTest::run(ostream& _stream, string const& _linePrefi
 	}
 	c.setSources(sources);
 	c.setEVMVersion(solidity::test::CommonOptions::get().evmVersion());
-	if (c.parse())
-		c.analyze();
-	else
+
+	if (!c.parse())
 	{
 		SourceReferenceFormatterHuman formatter(_stream, _formatted, false);
 		for (auto const& error: c.errors())
@@ -141,83 +140,86 @@ TestCase::TestResult ASTJSONTest::run(ostream& _stream, string const& _linePrefi
 		return TestResult::FatalError;
 	}
 
-	if (m_sources.size() > 1)
-		m_result += "[\n";
+	c.analyze();
 
-	for (size_t i = 0; i < m_sources.size(); i++)
-	{
-		ostringstream result;
-		ASTJsonConverter(false, sourceIndices).print(result, c.ast(m_sources[i].first));
-		m_result += result.str();
-		if (i != m_sources.size() - 1)
-			m_result += ",";
-		m_result += "\n";
-	}
-
-	if (m_sources.size() > 1)
-		m_result += "]\n";
-
-	bool resultsMatch = true;
-
-	replaceTagWithVersion(m_expectation);
-
-	if (m_expectation != m_result)
-	{
-		string nextIndentLevel = _linePrefix + "  ";
-		AnsiColorized(_stream, _formatted, {BOLD, CYAN}) << _linePrefix << "Expected result:" << endl;
-		{
-			istringstream stream(m_expectation);
-			string line;
-			while (getline(stream, line))
-				_stream << nextIndentLevel << line << endl;
-		}
-		_stream << endl;
-		AnsiColorized(_stream, _formatted, {BOLD, CYAN}) << _linePrefix << "Obtained result:" << endl;
-		{
-			istringstream stream(m_result);
-			string line;
-			while (getline(stream, line))
-				_stream << nextIndentLevel << line << endl;
-		}
-		_stream << endl;
-		resultsMatch = false;
-	}
-
-	for (size_t i = 0; i < m_sources.size(); i++)
-	{
-		ostringstream result;
-		ASTJsonConverter(true, sourceIndices).print(result, c.ast(m_sources[i].first));
-		m_resultLegacy = result.str();
-		if (i != m_sources.size() - 1)
-			m_resultLegacy += ",";
-		m_resultLegacy += "\n";
-	}
-
-	replaceTagWithVersion(m_expectationLegacy);
-
-	if (m_expectationLegacy != m_resultLegacy)
-	{
-		string nextIndentLevel = _linePrefix + "  ";
-		AnsiColorized(_stream, _formatted, {BOLD, CYAN}) << _linePrefix << "Expected result (legacy):" << endl;
-		{
-			istringstream stream(m_expectationLegacy);
-			string line;
-			while (getline(stream, line))
-				_stream << nextIndentLevel << line << endl;
-		}
-		_stream << endl;
-		AnsiColorized(_stream, _formatted, {BOLD, CYAN}) << _linePrefix << "Obtained result (legacy):" << endl;
-		{
-			istringstream stream(m_resultLegacy);
-			string line;
-			while (getline(stream, line))
-				_stream << nextIndentLevel << line << endl;
-		}
-		_stream << endl;
-		resultsMatch = false;
-	}
+	bool resultsMatch = runTest(
+		m_expectation,
+		m_result,
+		sourceIndices,
+		c,
+		false,
+		"",
+		_stream,
+		_linePrefix,
+		_formatted
+	);
+	resultsMatch = resultsMatch && runTest(
+		m_expectationLegacy,
+		m_resultLegacy,
+		sourceIndices,
+		c,
+		true,
+		"legacy",
+		_stream,
+		_linePrefix,
+		_formatted
+	);
 
 	return resultsMatch ? TestResult::Success : TestResult::Failure;
+}
+
+bool ASTJSONTest::runTest(std::string& _expectation, std::string& _result, std::map<std::string, unsigned> const& _sourceIndices, CompilerStack& _compiler, bool _legacy, std::string const& _variation, std::ostream& _stream, std::string const& _linePrefix, bool const _formatted)
+{
+	if (m_sources.size() > 1)
+		_result += "[\n";
+
+	for (size_t i = 0; i < m_sources.size(); i++)
+	{
+		ostringstream result;
+		ASTJsonConverter(_legacy, _sourceIndices).print(result, _compiler.ast(m_sources[i].first));
+		_result += result.str();
+		if (i != m_sources.size() - 1)
+			_result += ",";
+		_result += "\n";
+	}
+
+	if (m_sources.size() > 1)
+		_result += "]\n";
+
+	replaceTagWithVersion(_expectation);
+
+	if (_expectation != _result)
+	{
+		string nextIndentLevel = _linePrefix + "  ";
+		AnsiColorized(_stream, _formatted, {BOLD, CYAN}) <<
+			_linePrefix <<
+			"Expected result" <<
+			(!_variation.empty() ? " (" + _variation + "):" : ":") <<
+			endl;
+		{
+			istringstream stream(_expectation);
+			string line;
+			while (getline(stream, line))
+				_stream << nextIndentLevel << line << endl;
+		}
+		_stream << endl;
+
+		AnsiColorized(_stream, _formatted, {BOLD, CYAN}) <<
+			_linePrefix <<
+			"Obtained result" <<
+			(!_variation.empty() ? " (" + _variation + "):" : ":") <<
+			endl;
+		{
+			istringstream stream(_result);
+			string line;
+			while (getline(stream, line))
+				_stream << nextIndentLevel << line << endl;
+		}
+		_stream << endl;
+		return false;
+	}
+
+	return true;;
 }
 
 void ASTJSONTest::printSource(ostream& _stream, string const& _linePrefix, bool const) const

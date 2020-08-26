@@ -19,6 +19,7 @@
 #pragma once
 
 #include <libsolutil/AnsiColorized.h>
+#include <libsolidity/interface/CompilerStack.h>
 #include <test/TestCase.h>
 
 #include <iosfwd>
@@ -41,6 +42,7 @@ public:
 	void printSource(std::ostream& _stream, std::string const& _linePrefix = "", bool const _formatted = false) const override;
 	void printUpdatedExpectations(std::ostream& _stream, std::string const& _linePrefix) const override;
 private:
+	bool runTest(std::string& _expectation, std::string& _result, std::map<std::string, unsigned> const& _sourceIndicies, CompilerStack& _compiler, bool _legacy, std::string const& _variation, std::ostream& _stream, std::string const& _linePrefix = "", bool const _formatted = false);
 	std::vector<std::pair<std::string, std::string>> m_sources;
 	std::string m_expectationLegacy;
 	std::string m_astFilename;
